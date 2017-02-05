@@ -23,7 +23,7 @@ API
 
 Build
 -------
-This library depends on libssl and boost.
+This library depends on libssl and boost. To build a compact and near-exact dBG representation you first need to run "main" and then "debruijn_graph" on the read dataset.
 
 ```bash
  $ make main
@@ -43,7 +43,7 @@ This library depends on libssl and boost.
 ```
 
  Following are the argumenrs to debruijn_graph:
- - file: "filename" or name of the first file in the directory
+ - file: "filename" if only one file is used with "main" or name of the first file in the directory if a directory is used with "main"
 
 Contributing
 ------------
