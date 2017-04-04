@@ -1,9 +1,30 @@
+/*
+ * =====================================================================================
+ *
+ *       Filename:  hashutil.cc
+ *
+ *    Description:  
+ *
+ *        Version:  1.0
+ *        Created:  04/18/2016 04:49:32 PM
+ *       Revision:  none
+ *       Compiler:  gcc
+ *
+ *         Author:  Prashant Pandey (ppandey@cs.stonybrook.edu)
+ *                  Rob Johnson (rob@cs.stonybrook.edu)
+ *                  Rob Patro (rob.patro@cs.stonybrook.edu)
+ *   Organization:  Stony Brook University
+ *
+ * =====================================================================================
+ */
+
 #include<map>
 #include<cinttypes>
 #include<string>
 #include<set>
 #include<utility>
 #include<unordered_set>
+#include<unordered_map>
 #include<stack>
 #include<queue>
 
@@ -71,12 +92,12 @@ namespace dna {
 }
 
 namespace std {
-  template <> struct hash<dna::kmer> {
-    size_t operator()(const dna::kmer & x) const;
-  };
-  template <> struct hash<dna::canonical_kmer> {
-    size_t operator()(const dna::canonical_kmer & x) const;
-  };
+	template <> struct hash<dna::kmer> {
+		size_t operator()(const dna::kmer & x) const;
+	};
+	template <> struct hash<dna::canonical_kmer> {
+		size_t operator()(const dna::canonical_kmer & x) const;
+	};
 }
 
 namespace dna {
@@ -90,6 +111,7 @@ namespace dna {
 
 				kmer_counter_cqf(uint64_t l, QF cqf);
 
+				uint64_t get_hash(kmer_type k) const;
 				virtual void increment(kmer_type k, uint64_t amount);
 				virtual size_t count(kmer_type k) const;
 		};
@@ -100,8 +122,9 @@ namespace dna {
 				kmer_counter_lossless_cqf(uint64_t l, QF cqf);
 
 				void increment(kmer_type k, uint64_t amount);
-				size_t count(kmer_type k) const;
-
+				uint64_t count(kmer_type k) const;
+				uint64_t size(void) const;
+				
 				class iterator {
 					public:
 						const int64_t len;
@@ -131,16 +154,16 @@ namespace dna {
 			kmer_counter_lossless_cqf<node> begins;
 			kmer_counter_lossless_cqf<node> ends;
 			std::map<edge, uint64_t> corrections;
-
+			
 			//std::map<uint64_t, uint64_t> occurences;
 			//std::map<node, uint64_t> left_ends;
 			//std::map<node, uint64_t> right_ends;
 
 			debruijn_graph(int len,
-			 kmer_counter_cqf<edge> occ,
-			 kmer_counter_lossless_cqf<node> begs,
-			 kmer_counter_lossless_cqf<node> enz,
-			 std::map<edge, uint64_t> cor);
+										 kmer_counter_cqf<edge> occ,
+										 kmer_counter_lossless_cqf<node> begs,
+										 kmer_counter_lossless_cqf<node> enz,
+										 std::map<edge, uint64_t> cor);
 
 			uint64_t abundance(edge e) const;
 
@@ -159,6 +182,7 @@ namespace dna {
 			/* read_inserter get_read_inserter(void); */
 
 			void update_corrections(void);
+			void update_corrections(node);
 
 			static const uint64_t infinite_depth;
 
@@ -172,7 +196,7 @@ namespace dna {
 					};
 
 					const debruijn_graph &dbg;
- 					Q<work_item, std::deque<work_item> > work;
+					Q<work_item, std::deque<work_item> > work;
 					std::unordered_set<node> visited;
 
 					work_item front(const std::queue<work_item> &) const;
@@ -255,24 +279,8 @@ namespace dna {
 			uint64_t right_abundance(node n) const;
 			uint64_t duplex_abundance(node n) const;
 
-			node left_node(edge e) const;
-			node right_node(edge e) const;
-			std::set<node> nodes(edge e) const;
-
-			bool is_left_edge(node n, edge e) const;
-			bool is_right_edge(node n, edge e) const;
-			bool is_duplex_edge(node n, edge e) const;
-
-			bool is_left_node(edge e, node n) const;
-			bool is_right_node(edge e, node n) const;
-
 			bool is_leaf(node n) const;
-			bool is_self_revcomp(node n) const;
-			bool is_constant(node n) const;
-			bool can_have_duplex_edges(node n) const;
-
 			bool is_leaf_edge(edge e) const;
-			bool is_loop(edge e) const;
 
 			template<template<class, class> class Q>
 				void print_graph(std::string name,
@@ -304,23 +312,53 @@ namespace dna {
 			/* bool abundance_is_correct_whp_helper(node origin, uint8_t level, */
 			/* 					 node n) const; */
 			bool abundance_is_correct_whp(edge e) const;
+
+			class unresolved_edge_set : public std::unordered_set<edge> {
+			public:
+				uint64_t unresolved_count;
+				unresolved_edge_set(void);
+			};
+			
+			typedef
+				std::unordered_map<uint64_t, unresolved_edge_set>
+				unresolved_edges_map;
+
 			bool abundance_is_definitely_correct(edge e,
-																					 std::unordered_set<edge> &mbi) const;
-			bool left_side_is_definitely_correct(node n, std::unordered_set<edge> &mbi) const;
-			bool right_side_is_definitely_correct(node n, std::unordered_set<edge> &mbi) const;
-			edge find_single_error_edge(node n,
-																	std::unordered_set<edge> &mbi) const;
+																					 unresolved_edges_map &mbi) const;
+			bool left_side_is_definitely_correct(node n,
+																					 unresolved_edges_map &mbi) const;
+			bool right_side_is_definitely_correct(node n,
+																						unresolved_edges_map &mbi) const;
+			edge find_single_error_edge(node n, unresolved_edges_map &mbi) const;
 			void add_correction(edge e, int64_t correction);
 			uint64_t get_corrections(edge e) const;
-			void mark_edge_as_correct(edge e, std::unordered_set<edge> &mbi,
-																std::unordered_set<edge> &work_queue) const;
-			void fix_edge(node n, edge e,
-										std::unordered_set<edge> &mbi, std::unordered_set<node> &work_queue);
-			void do_work(edge e, std::unordered_set<edge> &mbi,
-									 std::unordered_set<edge> &work_queue);
-			void fix_leaf_edge(edge e, std::unordered_set<edge> &mbi, std::unordered_set<edge> &work_queue);
+			void mark_edge_as_correct(edge e, unresolved_edges_map &mbi,
+																std::unordered_set<node> &work_queue,
+																bool can_use_hashing_rules);
+			void do_work(edge e, unresolved_edges_map &mbi,
+									 std::unordered_set<node> &work_queue,
+									 bool can_use_hashing_rules);
+			void fix_leaf_edge(edge e, unresolved_edges_map &mbi,
+												 std::unordered_set<node> &work_queue);
 
-
+			template<template<class, class> class Q>
+				void update_corrections(nodes_container<Q> &, bool, bool);
 	};
+
+	debruijn_graph::node left_node(debruijn_graph::edge e);
+	debruijn_graph::node right_node(debruijn_graph::edge e);
+	std::set<debruijn_graph::node> nodes(debruijn_graph::edge e);
+
+	bool is_left_edge(debruijn_graph::node n, debruijn_graph::edge e);
+	bool is_right_edge(debruijn_graph::node n, debruijn_graph::edge e);
+	bool is_duplex_edge(debruijn_graph::node n, debruijn_graph::edge e);
+
+	bool is_left_node(debruijn_graph::edge e, debruijn_graph::node n);
+	bool is_right_node(debruijn_graph::edge e, debruijn_graph::node n);
+
+	bool is_self_revcomp(debruijn_graph::node n);
+	bool is_constant(debruijn_graph::node n);
+	bool can_have_duplex_edges(debruijn_graph::node n);
+	bool is_loop(debruijn_graph::edge e);
 
 };

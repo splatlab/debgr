@@ -1,5 +1,4 @@
-CXX = g++ -std=c++11
-CC = g++ -std=c++11
+TARGETS=main debruijn_graph
 
 ifdef D
 	DEBUG=-g
@@ -9,29 +8,58 @@ else
 	OPT=-Ofast
 endif
 
-ifdef P
-	PROFILE=-pg
+ifdef NH
+	ARCH=
+else
+	ARCH=-msse4.2 -D__SSE4_2_
 endif
 
-#CXXFLAGS = -Wall -g -pg  -m64 -I. -Wno-unused-result -Wno-strict-aliasing -Wno-unused-function
-#CXXFLAGS = -Wall -Ofast -m64 -I. -Wno-unused-result -Wno-strict-aliasing -Wno-unused-function -DLOG_WAIT_TIME -DLOG_CLUSTER_LENGTH
-CXXFLAGS = -Wall $(DEBUG) $(PROFILE) $(OPT) -m64 -I. -Wno-unused-result -Wno-strict-aliasing -Wno-unused-function
+ifdef P
+	PROFILE=-pg -no-pie # for bug in gprof.
+endif
 
-LDFLAGS = $(DEBUG) $(PROFILE) $(OPT) -lpthread -lssl -lcrypto -lboost_system -lboost_thread -lm
-#LDFLAGS = -g -pg -lpthread -lssl -lcrypto -lboost_system -lboost_thread -lm
-LIBS = libs/libbz2.a libs/libz.a
+CXX = g++ -std=c++11
+CC = g++ -std=c++11
+LD= g++ -std=c++11
 
-TARGET_MAIN	= main
-MAIN_SRC = main.cc hashutil.cc threadsafe-gqf/gqf.c
+CXXFLAGS = -Wall $(DEBUG) $(PROFILE) $(OPT) $(ARCH) -m64 -I. -Wno-unused-result -Wno-strict-aliasing -Wno-unused-function
 
-TARGET_DEBRUIJN_GRAPH = debruijn_graph
-TARGET_DEBRUIJN_GRAPH_SRC = debruijn_graph.cc hashutil.cc threadsafe-gqf/gqf.c
+LDFLAGS = $(DEBUG) $(PROFILE) $(OPT) -lpthread -lssl -lcrypto -lboost_system -lboost_thread -lm -lbz2 -lz
 
-$(TARGET_MAIN): $(MAIN_SRC)
-	$(CXX) $(CXXFLAGS) $(MAIN_SRC) $(INCLUDE) $(LDFLAGS) $(LIBS) -o $@
+#
+# declaration of dependencies
+#
 
-$(TARGET_DEBRUIJN_GRAPH): $(TARGET_DEBRUIJN_GRAPH_SRC)
-	$(CXX) $(CXXFLAGS) $(TARGET_DEBRUIJN_GRAPH_SRC) $(INCLUDE) $(LDFLAGS) $(LIBS) -o $@
+all: $(TARGETS)
+
+# dependencies between programs and .o files
+
+main:                  main.o 								 hashutil.o threadsafe-gqf/gqf.o
+debruijn_graph: 			 debruijn_graph.o 		   hashutil.o threadsafe-gqf/gqf.o
+
+# dependencies between .o files and .h files
+
+main.o: 								 									threadsafe-gqf/gqf.h hashutil.h chunk.h kmer.h reader.h
+debruijn_graph.o: 			 debruijn_graph.h threadsafe-gqf/gqf.h hashutil.h
+hashutil.o: 																									 hashutil.h
+
+# dependencies between .o files and .cc (or .c) files
+
+%.o: %.cc
+threadsafe-gqf/gqf.o: threadsafe-gqf/gqf.c threadsafe-gqf/gqf.h
+
+#
+# generic build rules
+#
+
+$(TARGETS):
+	$(LD) $^ $(LDFLAGS) -o $@
+
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $< -c -o $@
+
+%.o: %.c
+	$(CC) $(CXXFLAGS) $(INCLUDE) $< -c -o $@
 
 clean:
-	rm -f $(TARGET_MAIN) $(TARGET_DEBRUIJN_GRAPH) *.o core
+	rm -f *.o threadsafe-gqf/gqf.o $(TARGETS)
