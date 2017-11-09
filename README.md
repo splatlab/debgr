@@ -1,6 +1,21 @@
 # debgr
 deBGR: An Efficient and Near-Exact Representation of the Weighted de Bruijn Graph
 
+This work appeared at ISMB 2017. If you use this software please cite us.
+```
+@article{doi:10.1093/bioinformatics/btx261,
+author = {Pandey, Prashant and Bender, Michael A. and Johnson, Rob and Patro, Rob},
+title = {deBGR: an efficient and near-exact representation of the weighted de Bruijn graph},
+journal = {Bioinformatics},
+volume = {33},
+number = {14},
+pages = {i133-i141},
+year = {2017},
+doi = {10.1093/bioinformatics/btx261},
+URL = { + http://dx.doi.org/10.1093/bioinformatics/btx261},
+eprint = {/oup/backfile/content_public/journal/bioinformatics/33/14/10.1093_bioinformatics_btx261/2/btx261.pdf}
+}
+```
 Overview
 --------
 
