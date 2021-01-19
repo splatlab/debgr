@@ -54,7 +54,7 @@ This library depends on libssl and boost. To build a compact and near-exact dBG 
 
 ```bash
  $ make debruijn_graph
- $ ./main test.fastq
+ $ ./debruijn_graph test.fastq
 ```
 
  Following are the argumenrs to debruijn_graph:
